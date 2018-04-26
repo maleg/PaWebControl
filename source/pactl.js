@@ -13,7 +13,7 @@ function showPanel(data){
 		}
 		composition+='/>';
 		composition+='<input type="text" value="'+value.volume+'" disabled /> ';
-		composition+=value.description + "</span>";
+		composition+=value.name + "</span>";
 		composition+='<input type="range" min="0" max="153" step="1" list="volumescale" value="'+value.volume+'"';
 		if(value.mute === "yes"){ 
 			composition+=" disabled ";
@@ -23,42 +23,6 @@ function showPanel(data){
 		$("#sinks").append(composition);
 	});
 
-	$.each( data.inputs, function(key, value){
-		composition='<div id="i'+value.id+'" class="inputsink">';
-		composition+='<span><input type="checkbox"';
-		if(value.mute === "yes"){ 
-			composition+=" checked ";
-		}
-		composition+='/>';
-		composition+='<input type="text" value="'+value.volume+'" disabled /> ';
-		composition+=value.name + "</span>"; //+"->"+ data.sinks[value.sink].description;
-		composition+='<input type="range" min="0" max="153" step="1" list="volumescale" value="'+value.volume+'"';
-		if(value.mute === "yes"){ 
-			composition+=" disabled ";
-		}
-		composition+=' />';
-		composition+="</div>";
-		$("#s"+value.sink).append(composition);
-		
-		
-		$(".sortable").sortable({
-			items: "> div",
-			connectWith: ".sortable",
-			receive: function( event, ui ) {
-				//console.log("[" + this.id + "] received [" + ui.item.attr("id") + "] from [" + ui.sender.attr("id") + "]");
-				xhr_get({id: ui.item.attr("id"), sink: this.id});
-			},
-			start: function() {
-				clearTimeout(activityTimeout);
-			},
-			stop: function() {
-				resetActive();
-			}
-		});
-		//.disableSelection();
-		
-
-	});
 
 	$('input[type="range"]').on("change",function(){
        xhr_get({id: this.parentNode.id, volume: this.value});
