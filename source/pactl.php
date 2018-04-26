@@ -16,6 +16,8 @@
 	}
 	echo json_encode(objectToArray($panel));
 
+
+
   class Pactl {
 	const CMD = "LANG=C pactl";
 	public $sinks = array();
@@ -38,32 +40,15 @@
 	
 	private function update() {
 		$this->clear();
-		
-		//Create input sinks
-		exec(implode(" ", [Pactl::CMD, "list", SinkInput::CMD]), $output);
-		$filteredOutput = array_filter($output,"SinkInput::sink_inputs_filter");
-		$filteredOutput = array_values($filteredOutput);
-		array_walk($filteredOutput, create_function('&$val', '$val = ltrim($val);')); 
-		$filteredOutput = array_chunk($filteredOutput, 5);
-		foreach($filteredOutput as $sinkInput){
-			// Sink number = array key
-			$id = substr($sinkInput[0], strpos($sinkInput[0], "#")+1);
-			$this->inputs[$id] = new SinkInput($sinkInput);
-		}
-		unset($output);
-		unset($filteredOutput);
-		unset($id);
-		
-		//Create output sinks
+				//Create output sinks
 		exec(implode(" ", [Pactl::CMD, "list", Sink::CMD]), $output);
-		$filteredOutput = array_filter($output,"Sink::sinks_filter");
-		$filteredOutput = array_values($filteredOutput);
-		array_walk($filteredOutput, create_function('&$val', '$val = ltrim($val);')); 
-		$filteredOutput = array_chunk($filteredOutput, 4);
-		foreach($filteredOutput as $sink){
+		$SinksOutputs = Sink::Split_Filter($output);
+		foreach($SinksOutputs as $SinksOutput){
+			$SinksOutputCleaned = Sink::Clean_Filter($SinksOutput);
+			array_walk($SinksOutputCleaned, create_function('&$val', '$val = ltrim($val);')); 
 			// Sink number = array key
-			$id = substr($sink[0], strpos($sink[0], "#")+1);
-			$this->sinks[$id] = new Sink($sink);
+			$id = substr($SinksOutputCleaned[0], strpos($SinksOutputCleaned[0], "#")+1);
+			$this->sinks[$id] = new Sink($SinksOutputCleaned);
 		}
 	}
 	
@@ -94,7 +79,7 @@
 	class Sink {
 		const CMD = "sinks";
 		public $id;
-		public $description;
+		public $name;
 		public $mute;
 		public $volume;
 		
@@ -102,7 +87,7 @@
    		    // Sink input number
 			$this->id = substr($data[0], strpos($data[0], "#")+1);
 			// Sink description
-			$this->description = substr($data[1], strpos($data[1], ":")+2);
+			$this->name = substr($data[1], strpos($data[1], ":")+2);
 			// Mute
 			$this->mute = substr($data[2], strpos($data[2], ":")+2);
 			// Volume
@@ -117,23 +102,62 @@
 			exec(implode(" ", [Pactl::CMD, "set-sink-mute", $this->id, $value]));
 		}
 		
-		static public function sinks_filter($data){
-			$elements = array(
+		static public function Clean_Filter($src_array){
+			$res = array();
+			$tags = array(
 					"Sink",
-					"Description",
+					"Name",
 					"Mute",
 					"Volume"
 				);
-			$contained = false;
-			foreach($elements as &$element)
+			$tag_id = 0;
+			foreach($src_array as &$element)
 			{
-				if(strpos(ltrim($data),$element) === 0){
-					$contained = true;
+				if(strpos(ltrim($element),$tags[$tag_id]) === 0){
+					$res[] = $element;
+					$tag_id += 1;
 				}
 			}
-			return $contained;
+			return $res;
 		}
-	}
+		public function Split_Filter($src_array) {
+			$res = array();
+			$sink = array();
+			$record_on = 0;
+
+			foreach($src_array as &$line)
+			{
+				if($this->Sink_Stop_Func($line)){
+					$record_on = 0;
+					$res[] = $sink;
+				}
+				if($record_on){
+					$sink[] = $line;
+				}
+				if($this->Sink_Start_Func($line)){
+					$record_on = 1;
+					$sink = array();
+					$sink[] = $line;
+				}
+			}
+			return $res
+		}
+
+		public function Sink_Start_Func($data) {
+			if(strpos($data,"Sink #") === 0){
+				return true;
+			}
+			return false;
+
+		}
+		public function Sink_Stop_Func($data) {
+			if(strpos($data,"Sink #") === 0){
+				return true;
+			}
+			return false;
+
+		}
+	  }
 	
 	
 	class SinkInput {
