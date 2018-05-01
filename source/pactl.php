@@ -47,8 +47,12 @@
 			$SinksOutputCleaned = Sink::Clean_Filter($SinksOutput);
 			array_walk($SinksOutputCleaned, create_function('&$val', '$val = ltrim($val);')); 
 			// Sink number = array key
-			$id = substr($SinksOutputCleaned[0], strpos($SinksOutputCleaned[0], "#")+1);
-			$this->sinks[$id] = new Sink($SinksOutputCleaned);
+			if(count($SinksOutputCleaned) === 4){
+				$id = substr($SinksOutputCleaned[0], strpos($SinksOutputCleaned[0], "#")+1);
+				if($id > 2)
+					$this->sinks[$id] = new Sink($SinksOutputCleaned);
+				
+			}
 		}
 	}
 	
@@ -111,12 +115,13 @@
 					"Volume"
 				);
 			$tag_id = 0;
-			foreach($src_array as &$element)
+			foreach($src_array as $element)
 			{
 				if(strpos(ltrim($element),$tags[$tag_id]) === 0){
 					$res[] = $element;
 					$tag_id += 1;
 				}
+				if($tag_id >= 4) break;
 			}
 			return $res;
 		}
@@ -125,22 +130,22 @@
 			$sink = array();
 			$record_on = 0;
 
-			foreach($src_array as &$line)
+			foreach($src_array as $line)
 			{
-				if($this->Sink_Stop_Func($line)){
+				if(Sink::Sink_Stop_Func($line) === true){
 					$record_on = 0;
 					$res[] = $sink;
 				}
 				if($record_on){
 					$sink[] = $line;
 				}
-				if($this->Sink_Start_Func($line)){
+				if(Sink::Sink_Start_Func($line) === true){
 					$record_on = 1;
 					$sink = array();
 					$sink[] = $line;
 				}
 			}
-			return $res
+			return $res;
 		}
 
 		public function Sink_Start_Func($data) {
